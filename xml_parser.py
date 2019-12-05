@@ -1,9 +1,12 @@
 import os
+from abc import ABCMeta, abstractmethod
 import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
 
 class Parser:
 
+    __metaclass__ = ABCMeta
+    
     @abstractmethod
     def __init__(self):
         pass
@@ -14,7 +17,7 @@ class Parser:
         """
         if os.path.isfile(path) and ext in path:
             self.process_file(path)
-        elif os.path.isdir(path)
+        elif os.path.isdir(path):
             for root, dirs, files in os.walk(path):
                 for file in files:
                     if ext in file:
