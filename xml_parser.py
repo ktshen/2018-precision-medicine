@@ -138,7 +138,7 @@ class ClinicalTrialsXMLParser(Parser):
         brief_summary = root.find("./brief_summary/textblock")
         if nct_id is None or brief_summary is None or nct_id.text is None or brief_summary.text is None:
             return []
-        obj["nct_id"] =
+        obj["nct_id"] = nct_id.text
         obj["brief_summary"] = self.tokenize(brief_summary.text)
         detailed_description = root.find("./detailed_description/textblock")
         if detailed_description:
