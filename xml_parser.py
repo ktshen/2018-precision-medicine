@@ -6,17 +6,15 @@ import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
-# The amount of threads to process the file
-THREADS_NUM = 16
 stop_words = set(stopwords.words('english'))
 
 class Parser:
 
     __metaclass__ = ABCMeta
 
-    @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self, es, threads_num):
+        self.es = es
+        self.threads_num = threads_num
 
     def get_all_files_and_process(self, path):
         """
@@ -31,7 +29,7 @@ class Parser:
                     if self.ext in file:
                         q.put(os.path.join(root, file))
             threads = []
-            for i in range(THREADS_NUM):
+            for i in range(self.threads_num):
                 thread = threading.Thread(target=self.thread_worker, args=(q,))
                 thread.start()
                 threads.append(thread)
@@ -79,8 +77,8 @@ class Parser:
 
 
 class MedlineXMLParser(Parser):
-    def __init__(self, es):
-        self.es = es
+    def __init__(self, es, threads_num):
+        super().__init__(es, threads_num)
         self.ext = ".xml"
 
     def parse(self, content):
@@ -115,8 +113,8 @@ class MedlineXMLParser(Parser):
 
 
 class ClinicalTrialsXMLParser(Parser):
-    def __init__(self, es):
-        self.es = es
+    def __init__(self, es, threads_num):
+        super().__init__(es, threads_num)
         self.ext = ".xml"
 
     def parse(self, content):
@@ -154,8 +152,8 @@ class ClinicalTrialsXMLParser(Parser):
 
 
 class ExtraAbstractTXTParser(Parser):
-    def __init__(self, es):
-        self.es = es
+    def __init__(self, es, cpu):
+        super().__init__(es, threads_num)
         self.ext = ".txt"
 
     def parse(self, content):
