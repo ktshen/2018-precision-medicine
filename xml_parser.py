@@ -52,7 +52,7 @@ class Parser:
     def store(self):
         pass
 
-    @staticmehtod
+    @staticmethod
     def tokenize(string):
          filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
          return ' '.join(filtered_tokens)
