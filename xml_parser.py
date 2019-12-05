@@ -29,7 +29,7 @@ class Parser:
             for root, dirs, files in os.walk(path):
                 for file in files:
                     if self.ext in file:
-                        q.put(file)
+                        q.put(os.path.join(root, file))
             threads = []
             for i in range(THREADS_NUM):
                 thread = threading.Thread(target=self.thread_worker, args=(q,))
@@ -41,11 +41,10 @@ class Parser:
         else:
             raise FileNotFound(f"Can't found {path}")
 
-    @staticmethod
-    def thread_worker(q):
+    def thread_worker(self, q):
         while not q.empty():
             file = q.get()
-            self.process_file(os.path.join(root, file))
+            self.process_file(file)
             q.task_done()
 
     def process_file(self, file_path):
@@ -75,8 +74,8 @@ class Parser:
 
     @staticmethod
     def tokenize(string):
-         filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
-         return ' '.join(filtered_tokens)
+        filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
+        return ' '.join(filtered_tokens)
 
 
 class MedlineXMLParser(Parser):
@@ -123,14 +122,30 @@ class ClinicalTrialsXMLParser(Parser):
     def parse(self, content):
         root = ET.fromstring(content)
         obj = {}
-        obj["nct_id"] = next(root.iter("nct_id")).text
-        obj["brief_summary"] = self.tokenize(root.find("./brief_summary/textblock").text)
-        obj["detailed_description"] = self.tokenize(root.find("./detailed_description/textblock").text)
-        obj["criteria"] = self.tokenize(root.find("./eligibility/criteria/textblock"))
-        obj["gender"] = root.find("./eligibility/gender").text
-        obj["minimum_age"] = root.find("./eligibility/minimum_age").text
-        obj["maximum_age"] = root.find("./eligibility/maximum_age").text
-        obj["mesh_term"] = ". ".join([term.text for term in root.findall("./condition_browse/mesh_term")])
+        try:
+            obj["nct_id"] = next(root.iter("nct_id")).text
+            obj["brief_summary"] = self.tokenize(root.find("./brief_summary/textblock").text)
+            detailed_description = root.find("./detailed_description/textblock").text
+            if detailed_description:
+                obj["detailed_description"] = self.tokenize(detailed_description)
+            criteria = root.find("./eligibility/criteria/textblock")
+            if criteria:
+                obj["criteria"] = self.tokenize(criteria)
+            gender = root.find("./eligibility/gender").text
+            if gender:
+                obj["gender"] = gender
+
+            minimum_age = root.find("./eligibility/minimum_age").text
+            if minimum_age:
+                obj["minimum_age"] = minimum_age
+            maximum_age = root.find("./eligibility/maximum_age").text
+            if maximum_age:
+                obj["maximum_age"] = minimum_age
+            mesh_term = root.findall("./condition_browse/mesh_term")
+            if mesh_term:
+                obj["mesh_term"] = ". ".join([term.text for term in mesh_term])
+        except AttributeError:
+            return []
 
         return [obj]
 
