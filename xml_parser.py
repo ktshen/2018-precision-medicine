@@ -2,6 +2,7 @@ import os
 import queue
 import threading
 import time
+import traceback
 from abc import ABCMeta, abstractmethod
 import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
@@ -59,6 +60,7 @@ class Parser:
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except:
+            traceback.print_exc()
             return False
         for obj in parsed_list:
             obj["FilePath"] = file_path
@@ -90,7 +92,6 @@ class Parser:
     def tokenize(string):
         filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
         return ' '.join(filtered_tokens)
-
 
     def check_if_store_already(self, file_path):
         self.es.search()
@@ -130,6 +131,7 @@ class MedlineXMLParser(Parser):
 
         return parsed_list
 
+
 class ClinicalTrialsXMLParser(Parser):
     def __init__(self, es, threads_num):
         super().__init__(es, threads_num)
@@ -146,20 +148,20 @@ class ClinicalTrialsXMLParser(Parser):
         obj["nct_id"] = nct_id.text
         obj["brief_summary"] = self.tokenize(brief_summary.text)
         detailed_description = root.find("./detailed_description/textblock")
-        if detailed_description:
+        if detailed_description and detailed_description.text:
             obj["detailed_description"] = self.tokenize(detailed_description.text)
         criteria = root.find("./eligibility/criteria/textblock")
-        if criteria:
-            obj["criteria"] = self.tokenize(criteria)
+        if criteria and criteria.text:
+            obj["criteria"] = self.tokenize(criteria.text)
         gender = root.find("./eligibility/gender")
         if gender and gender.text:
             obj["gender"] = gender.text
-        minimum_age = root.find("./eligibility/minimum_age").text
+        minimum_age = root.find("./eligibility/minimum_age")
         if minimum_age and minimum_age.text:
-            obj["minimum_age"] = minimum_age
-        maximum_age = root.find("./eligibility/maximum_age").text
+            obj["minimum_age"] = minimum_age.text
+        maximum_age = root.find("./eligibility/maximum_age")
         if maximum_age and maximum_age.text:
-            obj["maximum_age"] = minimum_age
+            obj["maximum_age"] = minimum_age.text
         mesh_term = root.findall("./condition_browse/mesh_term")
         if mesh_term:
             obj["mesh_term"] = ". ".join([term.text for term in mesh_term])
