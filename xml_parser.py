@@ -87,29 +87,30 @@ class MedlineXMLParser(Parser):
 
         for article in root.findall("PubmedArticle"):
             obj = {}
-            try:
-                obj["PMID"] = article.find("./MedlineCitation/PMID").text
-                obj["ArticleTitle"] = self.tokenize(article.find("./MedlineCitation/Article/ArticleTitle").text)
-                obj["AbstractText"] = self.tokenize(article.find("./MedlineCitation/Article/Abstract/AbstractText").text)
-                keyword_list = article.find("./MedlineCitation/KeywordList/Keyword")
-                if keyword_list:
-                    obj["KeywordList"] = ". ".join([keyword.text for keyword in keyword_list])
-                chemical_list = article.find("./MedlineCitation/ChemicalList")
-                if chemical_list:
-                    obj["ChemicalList"] =". ".join([chemical.text for chemical in chemical_list.findall("./Chemical/NameOfSubstance")])
-                mesh_list = article.find("./MedlineCitation/MeshHeadingList")
-                if mesh_list:
-                    obj["MeshHeadingList"] =". ".join([mesh.text for mesh in mesh_list.findall("./MeshHeading/DescriptorName")])
-            # If tag can't found, we ignore the item for now
-            except AttributeError:
+            pmid = article.find("./MedlineCitation/PMID")
+            article_title = article.find("./MedlineCitation/Article/ArticleTitle")
+            abstract_text = article.find("./MedlineCitation/Article/Abstract/AbstractText")
+            if not all([pmid, article, abstract_text]):
                 continue
+            obj["PMID"] = pmid.text
+            obj["ArticleTitle"] = self.tokenize(article_title.text)
+            obj["AbstractText"] = self.tokenize(abstract_text.text)
+            keyword_list = article.find("./MedlineCitation/KeywordList/Keyword")
+            if keyword_list:
+                obj["KeywordList"] = ". ".join([keyword.text for keyword in keyword_list])
+            chemical_list = article.find("./MedlineCitation/ChemicalList")
+            if chemical_list:
+                obj["ChemicalList"] =". ".join([chemical.text for chemical in chemical_list.findall("./Chemical/NameOfSubstance")])
+            mesh_list = article.find("./MedlineCitation/MeshHeadingList")
+            if mesh_list:
+                obj["MeshHeadingList"] =". ".join([mesh.text for mesh in mesh_list.findall("./MeshHeading/DescriptorName")])
 
             parsed_list.append(obj)
 
         return parsed_list
 
     def store(self, obj):
-        self.es.index(index="medlinexml", body=obj)
+        self.es.index(index="medlinexml", body=obj, timeout=60)
 
 
 class ClinicalTrialsXMLParser(Parser):
@@ -120,30 +121,32 @@ class ClinicalTrialsXMLParser(Parser):
     def parse(self, content):
         root = ET.fromstring(content)
         obj = {}
-        try:
-            obj["nct_id"] = next(root.iter("nct_id")).text
-            obj["brief_summary"] = self.tokenize(root.find("./brief_summary/textblock").text)
-            detailed_description = root.find("./detailed_description/textblock").text
-            if detailed_description:
-                obj["detailed_description"] = self.tokenize(detailed_description)
-            criteria = root.find("./eligibility/criteria/textblock")
-            if criteria:
-                obj["criteria"] = self.tokenize(criteria)
-            gender = root.find("./eligibility/gender").text
-            if gender:
-                obj["gender"] = gender
-
-            minimum_age = root.find("./eligibility/minimum_age").text
-            if minimum_age:
-                obj["minimum_age"] = minimum_age
-            maximum_age = root.find("./eligibility/maximum_age").text
-            if maximum_age:
-                obj["maximum_age"] = minimum_age
-            mesh_term = root.findall("./condition_browse/mesh_term")
-            if mesh_term:
-                obj["mesh_term"] = ". ".join([term.text for term in mesh_term])
-        except AttributeError:
+        nct_id = root.find("./id_info/nct_id")
+        brief_summary = root.find("./brief_summary/textblock")
+        if not all([nct_id, brief_summary]):
             return []
+        obj["nct_id"] = nct_id.text
+        obj["brief_summary"] = self.tokenize(brief_summary.text)
+        detailed_description = root.find("./detailed_description/textblock").text
+        if detailed_description:
+            obj["detailed_description"] = self.tokenize(detailed_description)
+        criteria = root.find("./eligibility/criteria/textblock")
+        if criteria:
+            obj["criteria"] = self.tokenize(criteria)
+        gender = root.find("./eligibility/gender").text
+        if gender:
+            obj["gender"] = gender
+
+        minimum_age = root.find("./eligibility/minimum_age").text
+        if minimum_age:
+            obj["minimum_age"] = minimum_age
+        maximum_age = root.find("./eligibility/maximum_age").text
+        if maximum_age:
+            obj["maximum_age"] = minimum_age
+        mesh_term = root.findall("./condition_browse/mesh_term")
+        if mesh_term:
+            obj["mesh_term"] = ". ".join([term.text for term in mesh_term])
+
 
         return [obj]
 
