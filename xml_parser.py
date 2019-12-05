@@ -166,9 +166,6 @@ class ClinicalTrialsXMLParser(Parser):
 
         return [obj]
 
-    def store(self, obj):
-        self.es.index(index="clinicaltrialsxml", body=obj)
-
 
 class ExtraAbstractTXTParser(Parser):
     def __init__(self, es, cpu):
