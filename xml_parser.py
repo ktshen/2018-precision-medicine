@@ -90,7 +90,7 @@ class MedlineXMLParser(Parser):
             pmid = article.find("./MedlineCitation/PMID")
             article_title = article.find("./MedlineCitation/Article/ArticleTitle")
             abstract_text = article.find("./MedlineCitation/Article/Abstract/AbstractText")
-            if not all([pmid, article_title, abstract_text]):
+            if pmid is None or article_title is None or abstract_text is None:
                 continue
             obj["PMID"] = pmid.text
             obj["ArticleTitle"] = self.tokenize(article_title.text)
@@ -110,7 +110,7 @@ class MedlineXMLParser(Parser):
         return parsed_list
 
     def store(self, obj):
-        self.es.index(index="medlinexml", body=obj, timeout=60)
+        self.es.index(index="medlinexml", body=obj, timeout="60s")
 
 
 class ClinicalTrialsXMLParser(Parser):
@@ -123,7 +123,7 @@ class ClinicalTrialsXMLParser(Parser):
         obj = {}
         nct_id = root.find("./id_info/nct_id")
         brief_summary = root.find("./brief_summary/textblock")
-        if not all([nct_id, brief_summary]):
+        if nct_id is None or brief_summary is None:
             return []
         obj["nct_id"] = nct_id.text
         obj["brief_summary"] = self.tokenize(brief_summary.text)
