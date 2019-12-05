@@ -11,16 +11,16 @@ class Parser:
     def __init__(self):
         pass
 
-    def get_all_files_and_process(self, path, ext):
+    def get_all_files_and_process(self, path):
         """
             Process all the files in the target directory and subdirectory
         """
-        if os.path.isfile(path) and ext in path:
+        if os.path.isfile(path) and self.ext in path:
             self.process_file(path)
         elif os.path.isdir(path):
             for root, dirs, files in os.walk(path):
                 for file in files:
-                    if ext in file:
+                    if self.ext in file:
                         self.process_file(os.path.join(root, file))
         else:
             raise FileNotFound(f"Can't found {path}")
@@ -57,6 +57,7 @@ class Parser:
 class MedlineXMLParser(Parser):
     def __init__(self, es):
         self.es = es
+        self.ext = ".xml"
 
     def parse(self, content):
         root = ET.fromstring(content)
@@ -87,6 +88,7 @@ class MedlineXMLParser(Parser):
 class ClinicalTrialsXMLParser(Parser):
     def __init__(self, es):
         self.es = es
+        self.ext = ".xml"
 
     def parse(self, content):
         root = ET.fromstring(content)
@@ -113,6 +115,7 @@ class ClinicalTrialsXMLParser(Parser):
 class ExtraAbstractTXTParser(Parser):
     def __init__(self, es):
         self.es = es
+        self.ext = ".txt"
 
     def parse(self, content):
         obj = {}
