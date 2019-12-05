@@ -42,7 +42,7 @@ class Parser:
             raise FileNotFound(f"Can't found {path}")
 
     @staticmethod
-    def thread_worker(path, q):
+    def thread_worker(q):
         while not q.empty():
             file = q.get()
             self.process_file(os.path.join(root, file))
