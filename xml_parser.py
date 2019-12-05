@@ -75,7 +75,7 @@ class Parser:
     def parse(self, content):
         pass
 
-    def store(self):
+    def store(self, obj):
         """
             Try several times if connection timeout
         """
