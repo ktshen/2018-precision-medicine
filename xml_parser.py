@@ -1,6 +1,7 @@
 import os
 import queue
 import threading
+import time
 from abc import ABCMeta, abstractmethod
 import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
@@ -67,9 +68,18 @@ class Parser:
     def parse(self, content):
         pass
 
-    @abstractmethod
     def store(self):
-        pass
+        """
+            Try several times if connection timeout
+        """
+        counter = 5
+        while counter > 0:
+            try:
+                self.es.index(index=self.index, body=obj)
+                counter = 0
+            except ConnectionTimeout:
+                counter -= 1
+                time.sleep(1)
 
     @staticmethod
     def tokenize(string):
@@ -77,10 +87,15 @@ class Parser:
         return ' '.join(filtered_tokens)
 
 
+    def check_if_store_already(self, file_path):
+        self.es.search()
+
+
 class MedlineXMLParser(Parser):
     def __init__(self, es, threads_num):
         super().__init__(es, threads_num)
         self.ext = ".xml"
+        self.index = "medlinexml"
 
     def parse(self, content):
         root = ET.fromstring(content)
@@ -110,43 +125,30 @@ class MedlineXMLParser(Parser):
 
         return parsed_list
 
-    def store(self, obj):
-        """
-            Try several times if connection timeout
-        """
-        counter = 3
-        while counter > 0:
-            try:
-                self.es.index(index="medlinexml", body=obj)
-                counter = 0
-            except ConnectionTimeout:
-                counter -= 1
-
-
 class ClinicalTrialsXMLParser(Parser):
     def __init__(self, es, threads_num):
         super().__init__(es, threads_num)
         self.ext = ".xml"
+        self.index = "clinicaltrialsxml"
 
     def parse(self, content):
         root = ET.fromstring(content)
         obj = {}
         nct_id = root.find("./id_info/nct_id")
         brief_summary = root.find("./brief_summary/textblock")
-        if nct_id is None or brief_summary is None:
+        if nct_id is None or brief_summary is None or nct_id.text is None or brief_summary.text is None:
             return []
-        obj["nct_id"] = nct_id.text
+        obj["nct_id"] =
         obj["brief_summary"] = self.tokenize(brief_summary.text)
-        detailed_description = root.find("./detailed_description/textblock").text
+        detailed_description = root.find("./detailed_description/textblock")
         if detailed_description:
-            obj["detailed_description"] = self.tokenize(detailed_description)
+            obj["detailed_description"] = self.tokenize(detailed_description.text)
         criteria = root.find("./eligibility/criteria/textblock")
         if criteria:
             obj["criteria"] = self.tokenize(criteria)
         gender = root.find("./eligibility/gender").text
         if gender:
             obj["gender"] = gender
-
         minimum_age = root.find("./eligibility/minimum_age").text
         if minimum_age:
             obj["minimum_age"] = minimum_age
@@ -156,7 +158,6 @@ class ClinicalTrialsXMLParser(Parser):
         mesh_term = root.findall("./condition_browse/mesh_term")
         if mesh_term:
             obj["mesh_term"] = ". ".join([term.text for term in mesh_term])
-
 
         return [obj]
 
@@ -168,6 +169,7 @@ class ExtraAbstractTXTParser(Parser):
     def __init__(self, es, cpu):
         super().__init__(es, threads_num)
         self.ext = ".txt"
+        self.index = "extraabstracttxt"
 
     def parse(self, content):
         obj = {}
@@ -180,6 +182,3 @@ class ExtraAbstractTXTParser(Parser):
                 obj["Text"] = self.tokenize(text)
 
         return [obj]
-
-    def store(self, obj):
-        self.es.index(index="extraabstracttxt", body=obj)
