@@ -6,7 +6,7 @@ from nltk.tokenize import word_tokenize
 class Parser:
 
     __metaclass__ = ABCMeta
-    
+
     @abstractmethod
     def __init__(self):
         pass
@@ -54,7 +54,7 @@ class Parser:
         pass
 
 
-class MedlineXMLParser:
+class MedlineXMLParser(Parser):
     def __init__(self, es):
         self.es = es
 
@@ -84,7 +84,7 @@ class MedlineXMLParser:
         self.es.index(index="medlinexml", body=obj)
 
 
-class ClinicalTrialsXMLParser:
+class ClinicalTrialsXMLParser(Parser):
     def __init__(self, es):
         self.es = es
 
@@ -109,7 +109,8 @@ class ClinicalTrialsXMLParser:
     def store(self, obj):
         self.es.index(index="clinicaltrialsxml", body=obj)
 
-class ExtraAbstractTXTParser:
+
+class ExtraAbstractTXTParser(Parser):
     def __init__(self, es):
         self.es = es
 
