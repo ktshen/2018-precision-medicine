@@ -90,7 +90,7 @@ class MedlineXMLParser(Parser):
             pmid = article.find("./MedlineCitation/PMID")
             article_title = article.find("./MedlineCitation/Article/ArticleTitle")
             abstract_text = article.find("./MedlineCitation/Article/Abstract/AbstractText")
-            if not all([pmid, article, abstract_text]):
+            if not all([pmid, article_title, abstract_text]):
                 continue
             obj["PMID"] = pmid.text
             obj["ArticleTitle"] = self.tokenize(article_title.text)
