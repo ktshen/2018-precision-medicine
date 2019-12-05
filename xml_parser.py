@@ -38,7 +38,7 @@ class Parser:
 
     def read_file(self, file):
         with open(file, "r") as f:
-            content = f.read(file)
+            content = f.read()
         return content
 
     @abstractmethod
