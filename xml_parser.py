@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+from elasticsearch.exceptions import ConnectionTimeout
 
 stop_words = set(stopwords.words('english'))
 
@@ -23,19 +24,19 @@ class Parser:
         if os.path.isfile(path) and self.ext in path:
             self.process_file(path)
         elif os.path.isdir(path):
-            q = queue.Queue()
             for root, dirs, files in os.walk(path):
+                q = queue.Queue()
                 for file in files:
                     if self.ext in file:
                         q.put(os.path.join(root, file))
-            threads = []
-            for i in range(self.threads_num):
-                thread = threading.Thread(target=self.thread_worker, args=(q,))
-                thread.start()
-                threads.append(thread)
-            q.join()
-            for t in threads:
-                t.join()
+                threads = []
+                for i in range(self.threads_num):
+                    thread = threading.Thread(target=self.thread_worker, args=(q,))
+                    thread.start()
+                    threads.append(thread)
+                q.join()
+                for t in threads:
+                    t.join()
         else:
             raise FileNotFound(f"Can't found {path}")
 
@@ -110,7 +111,16 @@ class MedlineXMLParser(Parser):
         return parsed_list
 
     def store(self, obj):
-        self.es.index(index="medlinexml", body=obj, timeout="60s")
+        """
+            Try several times if connection timeout
+        """
+        counter = 3
+        while counter > 0:
+            try:
+                self.es.index(index="medlinexml", body=obj)
+                counter = 0
+            except ConnectionTimeout:
+                counter -= 1
 
 
 class ClinicalTrialsXMLParser(Parser):
