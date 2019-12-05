@@ -54,7 +54,12 @@ class Parser:
         """
         print("Processing {0}...".format(file_path))
         content = self.read_file(file_path)
-        parsed_list = self.parse(content)
+        try:
+            parsed_list = self.parse(content)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except:
+            return False
         for obj in parsed_list:
             obj["FilePath"] = file_path
             self.store(obj)
@@ -146,14 +151,14 @@ class ClinicalTrialsXMLParser(Parser):
         criteria = root.find("./eligibility/criteria/textblock")
         if criteria:
             obj["criteria"] = self.tokenize(criteria)
-        gender = root.find("./eligibility/gender").text
-        if gender:
-            obj["gender"] = gender
+        gender = root.find("./eligibility/gender")
+        if gender and gender.text:
+            obj["gender"] = gender.text
         minimum_age = root.find("./eligibility/minimum_age").text
-        if minimum_age:
+        if minimum_age and minimum_age.text:
             obj["minimum_age"] = minimum_age
         maximum_age = root.find("./eligibility/maximum_age").text
-        if maximum_age:
+        if maximum_age and maximum_age.text:
             obj["maximum_age"] = minimum_age
         mesh_term = root.findall("./condition_browse/mesh_term")
         if mesh_term:
