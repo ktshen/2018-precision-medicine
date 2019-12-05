@@ -1,9 +1,13 @@
 import os
+import queue
+import threading
 from abc import ABCMeta, abstractmethod
 import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
+# The amount of threads to process the file
+THREADS_NUM = 16
 stop_words = set(stopwords.words('english'))
 
 class Parser:
@@ -22,11 +26,28 @@ class Parser:
             self.process_file(path)
         elif os.path.isdir(path):
             for root, dirs, files in os.walk(path):
+                q = queue.Queue()
+                threads = []
                 for file in files:
                     if self.ext in file:
-                        self.process_file(os.path.join(root, file))
+                        q.put(file)
+                for i in range(THREADS_NUM):
+                    thread = threading.Thread(target=self.thread_worker, args=(q,))
+                    thread.start()
+                    threads.append(thread)
+                q.join()
+                for t in threads:
+                    t.join()
         else:
             raise FileNotFound(f"Can't found {path}")
+
+    @staticmethod
+    def thread_worker(path, q):
+        while not q.empty():
+            file = q.get()
+            self.process_file(os.path.join(root, file))
+            q.task_done()
+
 
     def process_file(self, file_path):
         """
@@ -73,6 +94,15 @@ class MedlineXMLParser(Parser):
                 obj["PMID"] = article.find("./MedlineCitation/PMID").text
                 obj["ArticleTitle"] = self.tokenize(article.find("./MedlineCitation/Article/ArticleTitle").text)
                 obj["AbstractText"] = self.tokenize(article.find("./MedlineCitation/Article/Abstract/AbstractText").text)
+                keyword_list = article.find("./MedlineCitation/KeywordList/Keyword")
+                if keyword_list:
+                    obj["KeywordList"] = ". ".join([keyword.text for keyword in keyword_list])
+                chemical_list = article.find("./MedlineCitation/ChemicalList")
+                if chemical_list:
+                    obj["ChemicalList"] =". ".join([chemical.text for chemical in chemical_list.findall("./Chemical/NameOfSubstance")])
+                mesh_list = article.find("./MedlineCitation/MeshHeadingList")
+                if mesh_list:
+                    obj["MeshHeadingList"] =". ".join([mesh.text for mesh in mesh_list.findall("./MeshHeading/DescriptorName")])
             # If tag can't found, we ignore the item for now
             except AttributeError:
                 continue
