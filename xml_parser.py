@@ -25,19 +25,19 @@ class Parser:
         if os.path.isfile(path) and self.ext in path:
             self.process_file(path)
         elif os.path.isdir(path):
+            q = queue.Queue()
             for root, dirs, files in os.walk(path):
-                q = queue.Queue()
-                threads = []
                 for file in files:
                     if self.ext in file:
                         q.put(file)
-                for i in range(THREADS_NUM):
-                    thread = threading.Thread(target=self.thread_worker, args=(q,))
-                    thread.start()
-                    threads.append(thread)
-                q.join()
-                for t in threads:
-                    t.join()
+            threads = []
+            for i in range(THREADS_NUM):
+                thread = threading.Thread(target=self.thread_worker, args=(q,))
+                thread.start()
+                threads.append(thread)
+            q.join()
+            for t in threads:
+                t.join()
         else:
             raise FileNotFound(f"Can't found {path}")
 
@@ -48,12 +48,12 @@ class Parser:
             self.process_file(os.path.join(root, file))
             q.task_done()
 
-
     def process_file(self, file_path):
         """
             - ead the content from the file and tokenize the content.
             - Store the tokenized object to elasticsearch database
         """
+        print("Processing {0}...".format(file_path))
         content = self.read_file(file_path)
         parsed_list = self.parse(content)
         for obj in parsed_list:
