@@ -2,6 +2,9 @@ import os
 from abc import ABCMeta, abstractmethod
 import xml.etree.ElementTree as ET
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+stop_words = set(stopwords.words('english'))
 
 class Parser:
 
@@ -49,9 +52,10 @@ class Parser:
     def store(self):
         pass
 
-    @abstractmethod
-    def tokenize(self):
-        pass
+    @staticmehtod
+    def tokenize(string):
+         filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
+         return ' '.join(filtered_tokens)
 
 
 class MedlineXMLParser(Parser):
@@ -67,19 +71,15 @@ class MedlineXMLParser(Parser):
             obj = {}
             try:
                 obj["PMID"] = article.find("./MedlineCitation/PMID").text
-                obj["ArticleTitle"] = article.find("./MedlineCitation/Article/ArticleTitle").text
-                obj["AbstractText"] = article.find("./MedlineCitation/Article/Abstract/AbstractText").text
+                obj["ArticleTitle"] = self.tokenize(article.find("./MedlineCitation/Article/ArticleTitle").text)
+                obj["AbstractText"] = self.tokenize(article.find("./MedlineCitation/Article/Abstract/AbstractText").text)
             # If tag can't found, we ignore the item for now
             except AttributeError:
                 continue
-            self.tokenize(obj)
+
             parsed_list.append(obj)
 
         return parsed_list
-
-    def tokenize(self, obj):
-        obj["ArticleTitle"] = word_tokenize(obj["ArticleTitle"])
-        obj["AbstractText"] = word_tokenize(obj["AbstractText"])
 
     def store(self, obj):
         self.es.index(index="medlinexml", body=obj)
@@ -94,19 +94,15 @@ class ClinicalTrialsXMLParser(Parser):
         root = ET.fromstring(content)
         obj = {}
         obj["nct_id"] = next(root.iter("nct_id")).text
-        obj["brief_summary"] = root.find("./brief_summary/textblock").text
-        obj["detailed_description"] = root.find("./detailed_description/textblock").text
-        obj["criteria"] = root.find("./eligibility/criteria/textblock")
+        obj["brief_summary"] = self.tokenize(root.find("./brief_summary/textblock").text)
+        obj["detailed_description"] = self.tokenize(root.find("./detailed_description/textblock").text)
+        obj["criteria"] = self.tokenize(root.find("./eligibility/criteria/textblock"))
         obj["gender"] = root.find("./eligibility/gender").text
         obj["minimum_age"] = root.find("./eligibility/minimum_age").text
         obj["maximum_age"] = root.find("./eligibility/maximum_age").text
         obj["mesh_term"] = ". ".join([term.text for term in root.findall("./condition_browse/mesh_term")])
 
         return [obj]
-
-    def tokenize(self, obj):
-        obj["brief_summary"] = word_tokenize(obj["brief_summary"])
-        obj["detailed_description"] = word_tokenize(obj["detailed_description"])
 
     def store(self, obj):
         self.es.index(index="clinicaltrialsxml", body=obj)
@@ -122,16 +118,12 @@ class ExtraAbstractTXTParser(Parser):
         for text in content.split("\n"):
             if not text or "Meeting:" in text:
                 continue
-            if "Title:":
+            if "Title:" in text:
                 obj["Title"] = text[6:]
             else:
-                obj["Text"] = text
+                obj["Text"] = self.tokenize(text)
 
         return [obj]
-
-    def tokenize(self, obj):
-        obj["Title"] = word_tokenize(obj["Title"])
-        obj["Text"] = word_tokenize(obj["Text"])
 
     def store(self, obj):
         self.es.index(index="extraabstracttxt", body=obj)
