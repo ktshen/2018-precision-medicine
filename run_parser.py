@@ -17,7 +17,7 @@ if __name__ == "__main__":
     Parser = {1: MedlineXMLParser, 2: ClinicalTrialsXMLParser, 3: ExtraAbstractTXTParser}[args.model]
 
     elastic_ip = args.elastic_ip
-    es = Elasticsearch(hosts=[{'host': elastic_ip, 'port': 9200}])
+    es = Elasticsearch(hosts=[{'host': elastic_ip, 'port': 9200}], retry_on_timeout=True)
 
     parser = Parser(es, args.threads)
     parser.get_all_files_and_process(directory)

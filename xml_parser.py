@@ -93,9 +93,6 @@ class Parser:
         filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
         return ' '.join(filtered_tokens)
 
-    def check_if_store_already(self, file_path):
-        self.es.search()
-
 
 class MedlineXMLParser(Parser):
     def __init__(self, es, threads_num):
@@ -130,6 +127,16 @@ class MedlineXMLParser(Parser):
             parsed_list.append(obj)
 
         return parsed_list
+
+
+    def check_if_store_already(self, pmid):
+        body =  { "query": { "term": { "PMID": { "value": pmid } } } }
+        resp = self.es.search(index=self.index, body=body)
+        if resp["hits"]["total"]["value"] == 0:
+            return False
+        else:
+            return True
+
 
 
 class ClinicalTrialsXMLParser(Parser):
