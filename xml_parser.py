@@ -96,7 +96,7 @@ class Parser:
         return ' '.join(filtered_tokens)
 
     def check_if_store_already(self, term):
-        body =  { "query": { "bool": { "must": { "match": {"FilePath": term } } } } }
+        body =  { "query": { "bool": { "must": { "match_phrase": {"FilePath": term } } } } }
         resp = self.es.search(index=self.index, body=body)
         if resp["hits"]["total"]["value"] == 0:
             return False
