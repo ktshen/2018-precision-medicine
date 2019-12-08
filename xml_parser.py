@@ -97,7 +97,7 @@ class Parser:
 
     def check_if_store_already(self, term):
         body =  { "query": { "bool": { "must": { "match": {"FilePath": term } } } } }
-        resp = bself.index, body=body)
+        resp = self.es.search(index=self.index, body=body)
         if resp["hits"]["total"]["value"] == 0:
             return False
         else:
