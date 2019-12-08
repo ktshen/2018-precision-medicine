@@ -54,6 +54,8 @@ class Parser:
             - Store the tokenized object to elasticsearch database
         """
         print("Processing {0}...".format(file_path))
+        if self.check_if_store_already(file_path):
+            return
         content = self.read_file(file_path)
         try:
             parsed_list = self.parse(content)
@@ -93,6 +95,14 @@ class Parser:
         filtered_tokens = [w for w in word_tokenize(string) if not w in stop_words]
         return ' '.join(filtered_tokens)
 
+    def check_if_store_already(self, term):
+        body =  { "query": { "term": { "FilePath": { "value": term } } } }
+        resp = self.es.search(index=self.index, body=body)
+        if resp["hits"]["total"]["value"] == 0:
+            return False
+        else:
+            return True
+
 
 class MedlineXMLParser(Parser):
     def __init__(self, es, threads_num):
@@ -107,11 +117,13 @@ class MedlineXMLParser(Parser):
         for article in root.findall("PubmedArticle"):
             obj = {}
             pmid = article.find("./MedlineCitation/PMID")
-            article_title = article.find("./MedlineCitation/Article/ArticleTitle")
-            abstract_text = article.find("./MedlineCitation/Article/Abstract/AbstractText")
-            if pmid is None or article_title is None or abstract_text is None or pmid.text is None or article_title.text is None or abstract_text.text is None:
+            if pmid is None or pmid.text is None:
                 continue
             obj["PMID"] = pmid.text
+            article_title = article.find("./MedlineCitation/Article/ArticleTitle")
+            abstract_text = article.find("./MedlineCitation/Article/Abstract/AbstractText")
+            if article_title is None or abstract_text is None or pmid.text is None or article_title.text is None or abstract_text.text is None:
+                continue
             obj["ArticleTitle"] = self.tokenize(article_title.text)
             obj["AbstractText"] = self.tokenize(abstract_text.text)
             keyword_list = article.find("./MedlineCitation/KeywordList/Keyword")
@@ -129,13 +141,6 @@ class MedlineXMLParser(Parser):
         return parsed_list
 
 
-    def check_if_store_already(self, pmid):
-        body =  { "query": { "term": { "PMID": { "value": pmid } } } }
-        resp = self.es.search(index=self.index, body=body)
-        if resp["hits"]["total"]["value"] == 0:
-            return False
-        else:
-            return True
 
 
 
