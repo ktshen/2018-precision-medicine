@@ -182,7 +182,7 @@ class ClinicalTrialsXMLParser(Parser):
 
 
 class ExtraAbstractTXTParser(Parser):
-    def __init__(self, es, cpu):
+    def __init__(self, threads_num)):
         super().__init__(es, threads_num)
         self.ext = ".txt"
         self.index = "extraabstracttxt"
